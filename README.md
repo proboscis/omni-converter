@@ -37,8 +37,11 @@ auto("torch,float32,BCHW,RGB,0_1",torch_img).to("[html]") # list of html text
 auto("torch,float32,BCHW,RGB,0_1",torch_img).to("widget") # ipywidget for displaying in notebook
 ```
 
-Since this library is designed as just a core of function composition, no conversion rules are implemented here.
-Please take a look at omni-cv-rules library for using conversion rules above.
+Since this library is designed to be just a core of function composition, no conversion rules are implemented here.
+Please take a look at [omni-cv-rules](https://github.com/proboscis/omni-cv-rules) library for using conversion rules above.
+
+# Installation
+`pip install py-omni-converter`
 
 # Overview
 The core components of this library are 'format', Rule, and AstarSolver.
