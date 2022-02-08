@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "py-omni-converter"
-version = "0.1.4"
+version = "0.1.7"
 description = ""
 authors = ["Kento Masui <nameissoap@gmail.com>"]
 packages = [{include="omni_converter"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 cytoolz = "*"
 tabulate = "*"
 tqdm = "*"

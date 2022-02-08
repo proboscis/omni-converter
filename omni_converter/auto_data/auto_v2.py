@@ -1,4 +1,5 @@
 import abc
+import os
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any
@@ -6,17 +7,20 @@ from typing import Any
 from cytoolz import memoize
 
 from omni_converter.solver.rules import AutoRuleBook
-from omni_converter.solver.astar import AstarSolver, Converter
+from omni_converter.solver.astar import AstarSolver, Converter, EdgeCachedSolver
 
 
 @memoize
 def get_solver(rule: AutoRuleBook):
-    return AstarSolver(
-        heuristics = lambda x,y:0,
+    solver = AstarSolver(
+        heuristics=lambda x, y: 0,
         neighbors=rule,
         max_depth=100,
         silent=False
     )
+    cache_path = os.path.expanduser("~/.cache/omni_converter.shelve")
+    #return EdgeCachedSolver(solver, cache_path)# this is too unstable
+    return solver
 
 
 class IAutoData(ABC):
@@ -43,11 +47,14 @@ class IAutoData(ABC):
         pass
 
     @abc.abstractmethod
-    def map(self, f) -> "IAutoData":
+    def map(self, f, format=None) -> "IAutoData":
         pass
 
     @abc.abstractmethod
     def override(self, rule: AutoRuleBook) -> "IAutoData":
+        pass
+    @abc.abstractmethod
+    def cast(self,new_format)->"IAutoData":
         pass
 
 
@@ -69,6 +76,9 @@ class RuledData(IAutoData):
 
     def override(self, book: AutoRuleBook):
         return RuledData(self.data, book)
+
+    def cast(self,new_format):
+        return AutoData2(self.data.value,new_format).with_rules(self.rulebook)
 
     def converter(self, dst_format):
         conversions = self.solver.solve(self.data.format, dst_format)
@@ -93,15 +103,11 @@ class RuledData(IAutoData):
     def _repr_html_(self):
         return self.to("_repr_html_")
 
-    def map(self, f):
-        """
-        :param f:function to convert an underlying value into a tuple of new value and its format
-        :return:
-        """
-        mapped, format = f(self.data.value)
+    def map(self, f, format=None):
+        mapped = f(self.data.value)
         nv = AutoData2(
             value=mapped,
-            format=format
+            format=format or self.format
         )
         return RuledData(
             data=nv,

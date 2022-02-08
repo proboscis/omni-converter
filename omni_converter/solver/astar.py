@@ -1,20 +1,22 @@
 import os
 from dataclasses import dataclass, field
+from itertools import chain
 from typing import Callable, Any, List
 
-from cytoolz import memoize
 from loguru import logger
 from tabulate import tabulate
+from toolz import memoize
 from tqdm import tqdm
 
 from omni_converter.solver.heap_wrapper import HeapQueue
 from omni_converter.solver.rules import RuleEdge
+from omni_converter.util import DefaultShelveCache
+
 
 class NoRouteError(RuntimeError): pass
 
 
 class ConversionError(Exception): pass
-
 
 
 @dataclass
@@ -96,7 +98,7 @@ class Converter:
         else:
             start = "None"
             end = "None"
-        path_data = [(i,e.name, (replaces(e.src)), (replaces(e.dst))) for i,e in enumerate(self.edges)]
+        path_data = [(i, e.name, (replaces(e.src)), (replaces(e.dst))) for i, e in enumerate(self.edges)]
         """
         info = OrderedDict(
             name="Conversion",
@@ -111,7 +113,7 @@ class Converter:
         if not self.edges:
             return "Converter(Identity)"
         res = f"""Converter({self.edges[0].src} => {self.edges[-1].dst}):cost={sum([e.cost for e in self.edges])}\n"""
-        return res + tabulate(path_data,headers=["index","converter","src_format","dst_format"])
+        return res + tabulate(path_data, headers=["index", "converter", "src_format", "dst_format"])
 
     def trace(self, tgt):
         x = tgt
@@ -129,22 +131,24 @@ class ISolver:
 class AstarSolver(ISolver):
     heuristics: Callable
     neighbors: Callable[[Any], List[RuleEdge]]
-    #sometimes a rule wants solver's ability?
+    # sometimes a rule wants solver's ability?
     # (Any,(Any,Any)=>List[Edge])=>List[ASEdge]
     max_depth: int
     silent: bool
+
     # TODO memoize
     def __post_init__(self):
         @memoize
-        def memoized_solve(start,end):
-            res = self._solve(start,end)
-            logger.debug("\n"+repr(res))
+        def memoized_solve(start, end):
+            res = self._solve(start, end)
+            # logger.debug("\n" + repr(res))
             return res
+
         self.memoized_solve = memoized_solve
         logger.debug(f"solver created with\n{self.neighbors}")
 
-    def solve(self,start,end)->Converter:
-        return self.memoized_solve(start,end)
+    def solve(self, start, end) -> Converter:
+        return self.memoized_solve(start, end)
 
     def _solve(self, start, end) -> Converter:
         to_visit = HeapQueue()
@@ -188,3 +192,40 @@ class AstarSolver(ISolver):
                     to_visit.push(new_score, (ase.new_format, new_trace))
 
         raise NoRouteError(f"no route found from {start} matching {end}. searched {visited} nodes.")
+
+
+@dataclass
+class EdgeCachedSolver(ISolver):
+    solver: ISolver
+    cache_path: str
+
+    def __post_init__(self):
+        self.solve_cache = DefaultShelveCache(
+            self._get_edges, self.cache_path
+        )
+
+        def memoized_solve(start, end):
+            key = (start, end)
+            edges = self.solve_cache[key]
+            edges = [self.solver.solve(start, end).edges for start, end in edges]
+            return Converter(list(chain(*edges)))
+
+        self.memoized_solve = memoized_solve
+
+    def _get_edges(self, key):
+        conv = self.solver.solve(*key)
+        logger.debug(f'found conversion:\n{conv}')
+        return [(e.src, e.dst) for e in conv.edges]
+
+    def solve(self, start, end) -> Converter:
+        try:
+            return self.memoized_solve(start, end)
+        except Exception as e:
+            logger.error(f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl")
+            import pickle
+            with open("./last_failed_solve.pkl","wb") as f:
+                pickle.dump(dict(
+                    start=start,
+                    end=end
+                ), f )
+            raise e

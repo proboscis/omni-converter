@@ -28,29 +28,38 @@ class ShelvedCache:
                 return key in db
 
     def __setitem__(self, key, value):
-        with self.lock, self.get_cache() as db:
-            key = pickle.dumps(key, 0).decode()
-            self.mem_cache[key] = value
-            db[key] = value
-            db.sync()
+        logger.debug(f"waiting lock for saving conversion")
+        with self.lock:
+            with self.get_cache() as db:
+                self._set_inlock(key, value)
+
+    def _set_inlock(self, key, value,db):
+        logger.debug(f"writing..")
+        key = pickle.dumps(key, 0).decode()
+        self.mem_cache[key] = value
+        db[key] = value
+        db.sync()
 
     def __getitem__(self, key):
         with self.lock:
-            key = pickle.dumps(key, 0).decode()
+            try:
+                key = pickle.dumps(key, 0).decode()
+            except Exception as e:
+                raise RuntimeError(f"cannot pickle key:{key}")
             if key in self.mem_cache:
                 return self.mem_cache[key]
             else:
+                failed = True
                 with self.get_cache() as db:
                     if key in db:
                         try:
                             res = db[key]
                             self.mem_cache[key] = res
+                            failed = False
                         except Exception as e:
                             logger.warning(f"failed to load from shelve.key={key}")
-                            return self.__missing__(key)
-                        return res
-                    else:
-                        return self.__missing__(key)
+                if failed:
+                    return self.__missing__(key)
 
     def __missing__(self, key):
         raise KeyError(key)
@@ -70,13 +79,17 @@ class DefaultShelveCache(ShelvedCache):
         super().__init__(path)
         self.f = f
 
-    @logger.catch
     def __missing__(self, key):
-        with self.lock:
-            jsonkey = pickle.loads(key.encode())
-            res = self.f(jsonkey)
-            try:
-                self[jsonkey] = res
-            except Exception as e:
-                logger.error(f"cannot save data \n\t{res} to key \n\t{key} of shelve.")
-            return res
+        origkey = pickle.loads(key.encode())
+        logger.warning(f"cannot find conversion:{origkey}")
+        res = self.f(origkey)
+        logger.warning(f"found res for {origkey}")
+        try:
+            logger.debug(f"saving conversion for {origkey}")
+            with self.get_cache() as db:
+                self._set_inlock(origkey, res,db)
+            # self[origkey] = res
+            logger.debug(f"saved conversion for {origkey}")
+        except Exception as e:
+            logger.error(f"cannot save data \n\t{res} to key \n\t{key} of shelve.")
+        return res
