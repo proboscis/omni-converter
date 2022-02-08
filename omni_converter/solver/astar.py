@@ -123,7 +123,7 @@ class Converter:
 
 
 class ISolver:
-    def solve(self, start_format, end_format) -> Converter:
+    def solve(self, start_format, end_format,silent=False) -> Converter:
         pass
 
 
@@ -131,36 +131,33 @@ class ISolver:
 class AstarSolver(ISolver):
     heuristics: Callable
     neighbors: Callable[[Any], List[RuleEdge]]
-    # sometimes a rule wants solver's ability?
-    # (Any,(Any,Any)=>List[Edge])=>List[ASEdge]
     max_depth: int
-    silent: bool
 
     # TODO memoize
     def __post_init__(self):
-        @memoize
-        def memoized_solve(start, end):
-            res = self._solve(start, end)
+        @memoize(key=lambda args, kwargs: args)
+        def memoized_solve(start, end, silent=False):
+            res = self._solve(start, end, silent)
             # logger.debug("\n" + repr(res))
             return res
 
         self.memoized_solve = memoized_solve
         logger.debug(f"solver created with\n{self.neighbors}")
 
-    def solve(self, start, end) -> Converter:
-        return self.memoized_solve(start, end)
+    def solve(self, start, end, silent=False) -> Converter:
+        return self.memoized_solve(start, end,silent=silent)
 
-    def _solve(self, start, end) -> Converter:
+    def _solve(self, start, end, silent) -> Converter:
         to_visit = HeapQueue()
         scores = dict()
         scores[start] = self.heuristics(start, end)
         to_visit.push(scores[start], (start, []))
         visited = 0
-        if not self.silent:
+        if not silent:
             bar = tqdm(desc=f"solving from {start} to {end}")
         last_bar_update = visited
         while to_visit:
-            if visited - last_bar_update > 1000 and not self.silent:
+            if visited - last_bar_update > 1000 and not silent:
                 bar.update(visited - last_bar_update)
                 last_bar_update = visited
 
@@ -169,10 +166,10 @@ class AstarSolver(ISolver):
             if len(trace) >= self.max_depth:  # terminate search on max_depth
                 continue
             if pos == end:  # reached a goal
-                if not self.silent:
+                if not silent:
                     bar.close()
                 return Converter(trace)
-            if visited % 10000 == 0 and not self.silent:
+            if visited % 10000 == 0 and not silent:
                 msg = str(pos)[:50]
                 bar.set_description(f"""pos:{msg:<50}""")
             normal_nodes = self.neighbors(pos)
@@ -203,11 +200,13 @@ class EdgeCachedSolver(ISolver):
         self.solve_cache = DefaultShelveCache(
             self._get_edges, self.cache_path
         )
+        logger.debug(f"using solver cache at {self.solve_cache.path}")
 
         def memoized_solve(start, end):
             key = (start, end)
             edges = self.solve_cache[key]
-            edges = [self.solver.solve(start, end).edges for start, end in edges]
+            assert edges is not None
+            edges = [self.solver.solve(start, end,silent=True).edges for start, end in edges]
             return Converter(list(chain(*edges)))
 
         self.memoized_solve = memoized_solve
@@ -217,15 +216,16 @@ class EdgeCachedSolver(ISolver):
         logger.debug(f'found conversion:\n{conv}')
         return [(e.src, e.dst) for e in conv.edges]
 
-    def solve(self, start, end) -> Converter:
+    def solve(self, start, end,silent=False) -> Converter:
         try:
             return self.memoized_solve(start, end)
         except Exception as e:
-            logger.error(f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl")
+            logger.error(
+                f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl")
             import pickle
-            with open("./last_failed_solve.pkl","wb") as f:
+            with open("./last_failed_solve.pkl", "wb") as f:
                 pickle.dump(dict(
                     start=start,
                     end=end
-                ), f )
+                ), f)
             raise e

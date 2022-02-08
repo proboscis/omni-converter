@@ -4,6 +4,12 @@ import pickle
 from loguru import logger
 
 
+def get_python_version() -> str:
+    import sys
+    vi = sys.version_info
+    return f"{vi.major}_{vi.minor}_{vi.micro}"
+
+
 class ShelvedCache:
     """
     a cache that uses shelve and memory as backend
@@ -11,8 +17,9 @@ class ShelvedCache:
 
     def __init__(self, path):
         import filelock
-        self.path = path
-        self.lock = filelock.FileLock(path + ".lock")
+        self.p_version = get_python_version()
+        self.path = path + self.p_version
+        self.lock = filelock.FileLock(path + self.p_version + ".lock")
         self.mem_cache = dict()
 
     def get_cache(self):
@@ -31,9 +38,9 @@ class ShelvedCache:
         logger.debug(f"waiting lock for saving conversion")
         with self.lock:
             with self.get_cache() as db:
-                self._set_inlock(key, value)
+                self._set_inlock(key, value, db)
 
-    def _set_inlock(self, key, value,db):
+    def _set_inlock(self, key, value, db):
         logger.debug(f"writing..")
         key = pickle.dumps(key, 0).decode()
         self.mem_cache[key] = value
@@ -60,6 +67,7 @@ class ShelvedCache:
                             logger.warning(f"failed to load from shelve.key={key}")
                 if failed:
                     return self.__missing__(key)
+                return res
 
     def __missing__(self, key):
         raise KeyError(key)
@@ -87,7 +95,7 @@ class DefaultShelveCache(ShelvedCache):
         try:
             logger.debug(f"saving conversion for {origkey}")
             with self.get_cache() as db:
-                self._set_inlock(origkey, res,db)
+                self._set_inlock(origkey, res, db)
             # self[origkey] = res
             logger.debug(f"saved conversion for {origkey}")
         except Exception as e:

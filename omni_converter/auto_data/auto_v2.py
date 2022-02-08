@@ -16,11 +16,13 @@ def get_solver(rule: AutoRuleBook):
         heuristics=lambda x, y: 0,
         neighbors=rule,
         max_depth=100,
-        silent=False
     )
+    # ahhh we need an identifier for a rulebook.
+    # the identifier needs to be consistent across runs.
+
     cache_path = os.path.expanduser("~/.cache/omni_converter.shelve")
-    #return EdgeCachedSolver(solver, cache_path)# this is too unstable
-    return solver
+    return EdgeCachedSolver(solver, cache_path)# this is too unstable
+    #return solver
 
 
 class IAutoData(ABC):
