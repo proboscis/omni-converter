@@ -11,7 +11,7 @@ This library is for automating creation of conversion function from known conver
 These are some examples of what you can do with this library.
 ```python
 from omni_converter import AutoDataFactory
-from omni_cv_rules import CV_RULEBOOK
+from omni_cv_rules.rulebook import CV_RULEBOOK
 auto = AutoDataFactory(CV_RULEBOOK)
 # loading an image
 img:"IAutoData" = auto("image_path","path/to/image")
