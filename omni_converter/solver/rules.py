@@ -14,6 +14,7 @@ class RuleEdge:
     new_format: object
     cost: int = field(default=1)
     name: str = field(default=None)
+    is_cast:bool = field(default=False)
 
     def __post_init__(self):
         if self.name is None:
@@ -56,6 +57,8 @@ class ConversionLambda(IRule):
                       lambda converter, new_state, score, name: RuleEdge(converter, new_state, score, name),
                       RuleEdge(callable, Any, int, str),
                       lambda converter, new_state, score, name: RuleEdge(converter, new_state, score, name),
+                      RuleEdge(callable, Any, int, str,bool),
+                      lambda converter, new_state, score, name,is_cast: RuleEdge(converter, new_state, score, name,is_cast),
                       Any,
                       raise_error
                       )
@@ -87,7 +90,7 @@ class CastLambda(IRule):
     def __call__(self, state):
         new_states = self.rule(state)
         if new_states is not None:
-            return [RuleEdge(identity, new_state, self.cost, self.cast_name) for new_state in new_states]
+            return [RuleEdge(identity, new_state, self.cost, self.cast_name,is_cast=True) for new_state in new_states]
         return None
 
     def __hash__(self):

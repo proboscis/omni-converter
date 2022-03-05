@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import Callable, Any, List
 
-from loguru import logger
 from tabulate import tabulate
 from toolz import memoize
 from tqdm import tqdm
@@ -33,6 +32,7 @@ class Converter:
     edges: List[Edge]
 
     def __call__(self, x):
+        from loguru import logger
         init_x = x
         for e in self.edges:
             try:
@@ -142,6 +142,7 @@ class AstarSolver(ISolver):
             return res
 
         self.memoized_solve = memoized_solve
+        from loguru import logger
         logger.debug(f"solver created with\n{self.neighbors}")
 
     def solve(self, start, end, silent=False) -> Converter:
@@ -200,8 +201,9 @@ class EdgeCachedSolver(ISolver):
         self.solve_cache = DefaultShelveCache(
             self._get_edges, self.cache_path
         )
+        from loguru import logger
         logger.debug(f"using solver cache at {self.solve_cache.path}")
-
+        @memoize
         def memoized_solve(start, end):
             key = (start, end)
             edges = self.solve_cache[key]
@@ -212,14 +214,17 @@ class EdgeCachedSolver(ISolver):
         self.memoized_solve = memoized_solve
 
     def _get_edges(self, key):
+        from loguru import logger
         conv = self.solver.solve(*key)
         logger.debug(f'found conversion:\n{conv}')
         return [(e.src, e.dst) for e in conv.edges]
 
     def solve(self, start, end,silent=False) -> Converter:
+
         try:
             return self.memoized_solve(start, end)
         except Exception as e:
+            from loguru import logger
             logger.error(
                 f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl")
             import pickle

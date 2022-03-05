@@ -68,6 +68,12 @@ class RuledData(IAutoData):
     def __post_init__(self):
         self.solver = get_solver(self.rulebook)
 
+    def __getstate__(self):
+        return self.data,self.rulebook
+    def __setstate__(self,state):
+        self.data,self.rulebook =state
+        self.solver = get_solver(self.rulebook)
+
     @property
     def value(self):
         return self.data.value
