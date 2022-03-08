@@ -1,6 +1,6 @@
 # rule is a class that describes a transition between states
 import abc
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, List, Union, NamedTuple, Tuple, Any
 
 from lru import LRU
@@ -14,7 +14,7 @@ class RuleEdge:
     new_format: object
     cost: int = field(default=1)
     name: str = field(default=None)
-    is_cast:bool = field(default=False)
+    is_cast: bool = field(default=False)
 
     def __post_init__(self):
         if self.name is None:
@@ -57,8 +57,9 @@ class ConversionLambda(IRule):
                       lambda converter, new_state, score, name: RuleEdge(converter, new_state, score, name),
                       RuleEdge(callable, Any, int, str),
                       lambda converter, new_state, score, name: RuleEdge(converter, new_state, score, name),
-                      RuleEdge(callable, Any, int, str,bool),
-                      lambda converter, new_state, score, name,is_cast: RuleEdge(converter, new_state, score, name,is_cast),
+                      RuleEdge(callable, Any, int, str, bool),
+                      lambda converter, new_state, score, name, is_cast: RuleEdge(converter, new_state, score, name,
+                                                                                  is_cast),
                       Any,
                       raise_error
                       )
@@ -90,7 +91,7 @@ class CastLambda(IRule):
     def __call__(self, state):
         new_states = self.rule(state)
         if new_states is not None:
-            return [RuleEdge(identity, new_state, self.cost, self.cast_name,is_cast=True) for new_state in new_states]
+            return [RuleEdge(identity, new_state, self.cost, self.cast_name, is_cast=True) for new_state in new_states]
         return None
 
     def __hash__(self):
@@ -112,10 +113,12 @@ class AutoRuleBook:
         self.memo = LRU(self.max_memo)
 
     def __init__(self,
+                 id: str = "unknown",
                  rules: List[IRule] = None,
                  recursive_rules: List[IRecursiveRule] = None,
-                 max_memo: int = 2 ** 20
+                 max_memo: int = 2 ** 20,
                  ):
+        self.id = id
         self.max_memo = max_memo
         self._init_non_picklable()
         self.rules = tuple(rules or [])
@@ -129,11 +132,13 @@ class AutoRuleBook:
         self._init_non_picklable()
 
     def __add__(self, other: Union["AutoRuleBook", IRecursiveRule, IRule]):
+        import hashlib
         return match(other,
                      IRule, self.add_rule,
                      IRecursiveRule, self.add_recursive_rule,
                      AutoRuleBook,
-                     lambda r: AutoRuleBook(self.rules + r.rules, self.recursive_rules + r.recursive_rules),
+                     lambda r: AutoRuleBook(hashlib.md5((self.id + r.id).encode()).hexdigest(), self.rules + r.rules,
+                                            self.recursive_rules + r.recursive_rules),
                      )
 
     def add_rule(self, rule: Union[IRule, Callable]) -> "AutoRuleBook":
@@ -146,7 +151,7 @@ class AutoRuleBook:
         """
         if not isinstance(rule, IRule):
             rule = ConversionLambda(rule)
-        return self + AutoRuleBook((rule,))
+        return self + AutoRuleBook(rules=(rule,))
 
     def add_rules(self, *rules: Union[IRule, Callable]) -> "AutoRuleBook":
         x = self
@@ -196,7 +201,7 @@ class AutoRuleBook:
                 return res
 
     def __hash__(self):
-        return hash(self.rules)
+        return self.id
 
     def __repr__(self):
         t1 = tabulate(enumerate(self.rules), headers="index rules".split())
@@ -204,3 +209,6 @@ class AutoRuleBook:
         return "AutoRuleBook\n" \
                f"{t1}\n" \
                f"{t2}"
+
+    def set_id(self, id: str):
+        return replace(self, id=id)

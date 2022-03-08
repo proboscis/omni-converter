@@ -69,7 +69,11 @@ class RuledData(IAutoData):
         self.solver = get_solver(self.rulebook)
 
     def __getstate__(self):
+        # rulebook needs to be picklable. but it cannot be used for memo.
+        # what can I do? to identify a rulebook?
+        # for this I need all the rules to have ids, specified by a user.
         return self.data,self.rulebook
+
     def __setstate__(self,state):
         self.data,self.rulebook =state
         self.solver = get_solver(self.rulebook)

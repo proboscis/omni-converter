@@ -133,7 +133,6 @@ class AstarSolver(ISolver):
     neighbors: Callable[[Any], List[RuleEdge]]
     max_depth: int
 
-    # TODO memoize
     def __post_init__(self):
         @memoize(key=lambda args, kwargs: args)
         def memoized_solve(start, end, silent=False):
@@ -143,7 +142,8 @@ class AstarSolver(ISolver):
 
         self.memoized_solve = memoized_solve
         from loguru import logger
-        logger.debug(f"solver created with\n{self.neighbors}")
+        logger.info(f"created a solver")
+        #logger.debug(f"solver created with\n{self.neighbors}")
 
     def solve(self, start, end, silent=False) -> Converter:
         return self.memoized_solve(start, end,silent=silent)
