@@ -7,6 +7,7 @@ from lru import LRU
 from pampy import match
 from tabulate import tabulate
 
+import hashlib
 
 @dataclass()
 class RuleEdge:
@@ -60,8 +61,7 @@ class ConversionLambda(IRule):
                       RuleEdge(callable, Any, int, str, bool),
                       lambda converter, new_state, score, name, is_cast: RuleEdge(converter, new_state, score, name,
                                                                                   is_cast),
-                      Any,
-                      raise_error
+                      Any, raise_error
                       )
             result.append(e)
 
@@ -132,7 +132,6 @@ class AutoRuleBook:
         self._init_non_picklable()
 
     def __add__(self, other: Union["AutoRuleBook", IRecursiveRule, IRule]):
-        import hashlib
         return match(other,
                      IRule, self.add_rule,
                      IRecursiveRule, self.add_recursive_rule,
@@ -201,7 +200,8 @@ class AutoRuleBook:
                 return res
 
     def __hash__(self):
-        return self.id
+        # ohh id must return an integer, okey
+        return int(hashlib.md5(self.id.encode()).hexdigest(),16)
 
     def __repr__(self):
         t1 = tabulate(enumerate(self.rules), headers="index rules".split())
@@ -211,4 +211,4 @@ class AutoRuleBook:
                f"{t2}"
 
     def set_id(self, id: str):
-        return replace(self, id=id)
+        return AutoRuleBook(id=id, rules=self.rules, recursive_rules=self.recursive_rules, max_memo=self.max_memo)

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py-omni-converter"
-version = "0.1.13"
+version = "0.1.16"
 description = ""
 authors = ["Kento Masui <nameissoap@gmail.com>"]
 packages = [{include="omni_converter"}]
