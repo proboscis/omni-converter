@@ -125,10 +125,10 @@ class AutoRuleBook:
         self.recursive_rules = tuple(recursive_rules or [])
 
     def __getstate__(self):
-        return self.rules, self.recursive_rules, self.max_memo
+        return self.id,self.rules, self.recursive_rules, self.max_memo
 
     def __setstate__(self, state):
-        self.rules, self.recursive_rules, self.max_memo = state
+        self.id,self.rules, self.recursive_rules, self.max_memo = state
         self._init_non_picklable()
 
     def __add__(self, other: Union["AutoRuleBook", IRecursiveRule, IRule]):

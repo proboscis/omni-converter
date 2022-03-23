@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "py-omni-converter"
-version = "0.1.16"
+version = "0.1.18"
 description = ""
-authors = ["Kento Masui <nameissoap@gmail.com>"]
+authors = ["proboscis <nameissoap@gmail.com>"]
 packages = [{include="omni_converter"}]
-
+license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.7"
 cytoolz = "*"
