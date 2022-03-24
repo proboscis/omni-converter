@@ -18,9 +18,9 @@ img:"IAutoData" = auto("image_path","path/to/image")
 # You can convert it to any format by calling 'to'
 # this will automatically search for a composition of functions to convert 'image_path' into numpy array.
 ary:np.ndarray = img.to("numpy,uint8,HWC,RGB,0_255")
-# CHW means that the tensor shape is (Channel, Height, Widgth).
+# CHW means that the tensor shape is (Channel, Height, Width).
 torch_img:torch.Tensor = img.to("torch,float32,CHW,RGB,0_1")
-# BCHW means that the tensor shape is (Batch, Channel, Height, Widgth).
+# BCHW means that the tensor shape is (Batch, Channel, Height, Width).
 torch_batch:torch.Tensor = img.to("torch,float32,BCHW,RGB,0_1")
 # you can start searching from any format
 base64_str:str = auto("torch,float32,CHW,RGB,0_1",torch_img).to("base64")
