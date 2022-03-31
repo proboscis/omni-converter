@@ -206,7 +206,7 @@ class AutoRuleBook:
     def __repr__(self):
         t1 = tabulate(enumerate(self.rules), headers="index rules".split())
         t2 = tabulate(enumerate(self.recursive_rules), headers="index recursive_rules".split())
-        return "AutoRuleBook\n" \
+        return f"AutoRuleBook(id={self.id})\n" \
                f"{t1}\n" \
                f"{t2}"
 

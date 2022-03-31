@@ -226,7 +226,7 @@ class EdgeCachedSolver(ISolver):
         except Exception as e:
             from loguru import logger
             logger.error(
-                f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl")
+                f"failed to solve conversion from {start} to {end}. saving the two format as last_failed_solve.pkl due to {e}")
             import pickle
             with open("./last_failed_solve.pkl", "wb") as f:
                 pickle.dump(dict(
