@@ -80,7 +80,7 @@ def rule_AB_to_ABC(format:Any)->List[RuleEdge]:
 ```
 
 ## AstarSolver
-AstarSolver is a solver that composes multiple functions to find a conversion from given source format and target format.
+AstarSolver is a solver that composes multiple functions to find a conversion from given source format to target format.
 ```python
 solver = AstarSolver(
     heuristics=lambda x,y:0,#no heuristics used so it is just a BFS
