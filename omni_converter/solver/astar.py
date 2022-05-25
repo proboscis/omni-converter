@@ -3,8 +3,13 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import Callable, Any, List
 
+import numpy as np
+from loguru import logger
+from pampy import match
+from returns.result import safe, Result
 from tabulate import tabulate
 from toolz import memoize
+from torch import Tensor
 from tqdm import tqdm
 
 from omni_converter.solver.heap_wrapper import HeapQueue
@@ -27,12 +32,36 @@ class Edge:
     name: str = field(default="unnamed")
 
 
+def _default_inspector(x):
+    return match(x,
+                 Tensor,lambda t:f"Tensor:{t.shape},{t.dtype},{t.min()},{t.max()},{t.mean()}",
+                 np.ndarray,lambda t:f"Numpy:{t.shape},{t.dtype},{t.min()},{t.max()},{t.mean()}",
+                 list,lambda l:f"[{_default_inspector(l[0])}]",
+          Any,lambda t:type(t)
+          )
+
 @dataclass
 class Converter:
     edges: List[Edge]
 
+    def _call_with_trace(self,x):
+        logger.warning(f"inspecting\n{self}")
+        for e in self.edges:
+            try:
+                logger.warning(f"conversion:{e.src}=>{e.dst}")
+                logger.warning(f"x:{_default_inspector(x)}")
+                y = e.f(x)
+                logger.warning(f"y:{_default_inspector(y)}")
+                x = y
+            except Exception as ex:
+                logger.error(f"failed to do {e.f}. due to {e}")
+                return
+
+
+
     def __call__(self, x):
         from loguru import logger
+        src = x
         init_x = x
         for e in self.edges:
             try:
@@ -59,10 +88,15 @@ class Converter:
                     logger.info(f"failed to dump erroneous conversion.")
                     raise save_error
                     # embed()
-                source = inspect.getsource(e.f)
+                source:Result = safe(inspect.getsource)(e.f)
                 logger.warning(f"saved last conversion error cause at {p}")
+                self._call_with_trace(src)
+
                 raise ConversionError(
-                    f"exception in edge:{e.name} \n paths:{[e.name for e in self.edges]} \n x:{x} \n edge source:{source}") from ex
+                    f"exception in edge:{e.name} \n "
+                    f"paths:{[e.name for e in self.edges]} \n "
+                    f"x:{x} \n "
+                    f"edge source:{source.value_or('failed_to_fech_source')}") from ex
         return x
 
     def __getitem__(self, item):

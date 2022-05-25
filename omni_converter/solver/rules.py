@@ -118,6 +118,7 @@ class AutoRuleBook:
                  recursive_rules: List[IRecursiveRule] = None,
                  max_memo: int = 2 ** 20,
                  ):
+        assert isinstance(id,str),f"id must be an instance of str. got:{id}"
         self.id = id
         self.max_memo = max_memo
         self._init_non_picklable()
@@ -197,7 +198,7 @@ class AutoRuleBook:
                 res += edges
             if res:
                 self.memo[state] = res
-                return res
+            return res
 
     def __hash__(self):
         # ohh id must return an integer, okey

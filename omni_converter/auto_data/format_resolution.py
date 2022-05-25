@@ -8,5 +8,5 @@ def type_as_format(format):
 
 
 FORMAT_RESOLUTION_RULES = AutoRuleBook(
-    (type_as_format,)
+    rules = [type_as_format]
 )
