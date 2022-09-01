@@ -28,7 +28,7 @@ base64_str:str = auto("torch,float32,CHW,RGB,0_1",torch_img).to("base64")
 np_ary:np.ndarray = auto("torch,float32,CHW,RGB,0_1",torch_img).to("numpy,float64,BHWC,BGR,0_1")
 # list of format is supported. enclosing any valid format with square bracket means that the data is list of that format. 
 paths = ["1.png","2.png"]
-auto("[image_path]")(paths).to("torch,float32,BCHW,RGB,0_1")
+auto("[image_path]",paths).to("torch,float32,BCHW,RGB,0_1")
 # and back also
 auto("torch,float32,BCHW,RGB,0_1",torch_img).to("[torch,float32,CHW,RGB,0_1]") # list of torch array from a batch!
 auto("torch,float32,BCHW,RGB,0_1",torch_img).to("[image,RGB,RGB]") # list of PIL.Image.Image!
