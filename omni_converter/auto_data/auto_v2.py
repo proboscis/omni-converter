@@ -8,6 +8,7 @@ from cytoolz import memoize
 
 from omni_converter.solver.rules import AutoRuleBook
 from omni_converter.solver.astar import AstarSolver, Converter, EdgeCachedSolver
+from pinject_design.di.dynamic_proxy import DynamicProxyContextImpl
 
 
 @memoize
@@ -55,6 +56,7 @@ class IAutoData(ABC):
     @abc.abstractmethod
     def override(self, rule: AutoRuleBook) -> "IAutoData":
         pass
+
     @abc.abstractmethod
     def cast(self,new_format)->"IAutoData":
         pass
@@ -125,6 +127,9 @@ class RuledData(IAutoData):
             data=nv,
             rulebook=self.rulebook,
         )
+
+    def __repr__(self):
+        return f"RuledData({self.data})"
 
 
 @dataclass

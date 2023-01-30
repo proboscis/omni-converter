@@ -1,5 +1,4 @@
 import heapq
-from loguru import logger
 from pprintpp import pformat
 from collections import OrderedDict
 import dill # for pickling inner lambda...
@@ -33,6 +32,7 @@ class Conversion:
             except Exception as ex:
                 import inspect
                 import pickle
+                from loguru import logger
                 logger.error(f"caught an exception. inspecting..{ex}")
                 logger.warning(f"saving erroneous conversion for debug")
                 info= dict(
@@ -139,6 +139,7 @@ def _astar(
         #print(f"visit:{pos}")
         #print(f"{((trace[-1].a,trace[-1].name) if trace else 'no trace')}")
         #print(f"visit:{trace[-1] if trace else 'no trace'}")
+        from loguru import logger
         if len(trace) >= max_depth: # terminate search on max_depth
             logger.error(f"search terminated due to max_depth")
             continue
@@ -180,6 +181,7 @@ def _astar_direct(
     """
     neighbors: node->[(mapper,next_node,cost,name)]
     """
+    from loguru import logger
     to_visit = []
     scores = dict()
     scores[start] = heuristics(start,end)
@@ -274,6 +276,7 @@ class AStarSolver:
         cache_path=os.path.join(expanduser("~"),".cache/autodata.shelve"),
         debug_hook=None
         ):
+        from loguru import logger
         """
         rules: List[Rule]
         Rule: (state)->List[(converter:(data)->data,new_state,cost,conversion_name)]

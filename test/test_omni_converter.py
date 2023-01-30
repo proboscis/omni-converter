@@ -1,6 +1,6 @@
 from typing import List, Any
 
-from loguru import logger
+
 
 from omni_converter import __version__
 from omni_converter.solver.astar import AstarSolver

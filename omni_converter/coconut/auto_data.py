@@ -37,7 +37,7 @@ from typing import Mapping  # from typing import Mapping, Callable
 from typing import Callable  # from typing import Mapping, Callable
 from IPython.display import display  # from IPython.display import display
 import dill  # to make the lambda functions picklable  # import dill # to make the lambda functions picklable
-from loguru import logger  # from loguru import logger
+  # from loguru import logger
 import numpy as np  # import numpy as np
 """
 What I want to achieve is to generate a class.

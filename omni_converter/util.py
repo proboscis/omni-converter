@@ -1,7 +1,7 @@
 import os
 import pickle
 
-from loguru import logger
+
 
 
 def get_python_version() -> str:
@@ -37,12 +37,14 @@ class ShelvedCache:
                 return key in db
 
     def __setitem__(self, key, value):
+        from loguru import logger
         logger.debug(f"waiting lock for saving conversion")
         with self.lock:
             with self.get_cache() as db:
                 self._set_inlock(key, value, db)
 
     def _set_inlock(self, key, value, db):
+        from loguru import logger
         logger.debug(f"writing..")
         key = pickle.dumps(key, 0).decode()
         self.mem_cache[key] = value
@@ -65,6 +67,7 @@ class ShelvedCache:
                         self.mem_cache[key] = res
                         failed = False
                     except Exception as e:
+                        from loguru import logger
                         logger.warning(f"failed to load from shelve.key={key}")
             if failed:
                 return self.__missing__(key)
@@ -91,6 +94,7 @@ class DefaultShelveCache(ShelvedCache):
 
     def __missing__(self, key):
         origkey = pickle.loads(key.encode())
+        from loguru import logger
         logger.warning(f"cannot find conversion:{origkey}")
         res = self.f(origkey)
         logger.warning(f"found res for {origkey}")

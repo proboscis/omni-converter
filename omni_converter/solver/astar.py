@@ -1,10 +1,12 @@
 import os
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from itertools import chain
 from typing import Callable, Any, List
 
 import numpy as np
-from loguru import logger
+import pandas as pd
+
 from pampy import match
 from returns.result import safe, Result
 from tabulate import tabulate
@@ -45,6 +47,7 @@ class Converter:
     edges: List[Edge]
 
     def _call_with_trace(self,x):
+        from loguru import logger
         logger.warning(f"inspecting\n{self}")
         for e in self.edges:
             try:
@@ -191,7 +194,11 @@ class AstarSolver(ISolver):
         if not silent:
             bar = tqdm(desc=f"solving from {start} to {end}")
         last_bar_update = visited
+        search_start = datetime.now()
+        timeout = timedelta(seconds=20)
         while to_visit:
+            if datetime.now() - search_start >= timeout:
+                raise RuntimeError(f"AstarSolver search timed out after {timeout} seconds")
             if visited - last_bar_update > 1000 and not silent:
                 bar.update(visited - last_bar_update)
                 last_bar_update = visited
@@ -215,6 +222,7 @@ class AstarSolver(ISolver):
                 try:
                     new_score = scores[pos] + ase.cost + self.heuristics(ase.new_format, end)
                 except Exception as e:
+                    from loguru import logger
                     logger.error(f"pos:{pos},cost:{ase.cost},next_node:{ase.new_format}")
                     raise e
                 if ase.new_format in scores and scores[ase.new_format] <= new_score:
@@ -236,12 +244,13 @@ class EdgeCachedSolver(ISolver):
             self._get_edges, self.cache_path
         )
         from loguru import logger
-        logger.debug(f"using solver cache at {self.solve_cache.path}")
+        #logger.debug(f"using solver cache at {self.solve_cache.path}")
         @memoize
         def memoized_solve(start, end):
             key = (start, end)
             edges = self.solve_cache[key]
             assert edges is not None
+            # this is taking time.
             edges = [self.solver.solve(start, end,silent=True).edges for start, end in edges]
             return Converter(list(chain(*edges)))
 
@@ -250,7 +259,7 @@ class EdgeCachedSolver(ISolver):
     def _get_edges(self, key):
         from loguru import logger
         conv = self.solver.solve(*key)
-        logger.debug(f'found conversion:\n{conv}')
+        #logger.debug(f'found conversion:\n{conv}')
         return [(e.src, e.dst) for e in conv.edges]
 
     def solve(self, start, end,silent=False) -> Converter:
