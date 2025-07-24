@@ -1,5 +1,6 @@
 import os
 import shelve
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from itertools import chain
@@ -160,6 +161,15 @@ class ISolver:
         pass
 
 
+@contextmanager
+def timeout_manager(duration_sec):
+    start = datetime.now()
+    yield
+    end = datetime.now()
+    if end - start > timedelta(seconds=duration_sec):
+        raise RuntimeError(f"Operation took longer than {duration_sec} seconds")
+
+
 @dataclass
 class AstarSolver(ISolver):
     heuristics: Callable
@@ -176,6 +186,10 @@ class AstarSolver(ISolver):
         self.memoized_solve = memoized_solve
         # logger.info(f"created a solver")
         # logger.debug(f"solver created with\n{self.neighbors}")
+        @memoize
+        def memoized_neighbors(pos):
+            return self.neighbors(pos)
+        self.memoized_neighbors = memoized_neighbors
 
     def solve(self, start, end, silent=False) -> Converter:
         return self.memoized_solve(start, end, silent=silent)
@@ -209,7 +223,8 @@ class AstarSolver(ISolver):
             if visited % 10000 == 0 and not silent:
                 msg = str(pos)[:50]
                 bar.set_description(f"""pos:{msg:<50}""")
-            normal_nodes = self.neighbors(pos)
+            with timeout_manager(duration_sec=2):
+                normal_nodes = self.memoized_neighbors(pos)
             # why did I choose not to provide neighbors?
             for i, ase in enumerate(normal_nodes):
                 assert isinstance(ase.cost, int), f"cost is not an integer:{pos}"
