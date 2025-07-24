@@ -1,18 +1,25 @@
+[project]
+name = "py-omni-converter"
+version = "0.1.38"
+description = ""
+requires-python = ">=3.10"
+
 [tool.poetry]
 name = "py-omni-converter"
-version = "0.1.25"
+version = "0.1.38"
 description = ""
 authors = ["proboscis <nameissoap@gmail.com>"]
 packages = [{include="omni_converter"}]
 license = "MIT"
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.10"
 cytoolz = "*"
 tabulate = "*"
 tqdm = "*"
 pampy="*"
 loguru="*"
 lru-dict="^1.0.0"
+cloudpickle = "^3.0.0"
 
 
 [tool.poetry.dev-dependencies]
