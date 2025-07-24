@@ -1,12 +1,12 @@
 [project]
 name = "py-omni-converter"
-version = "0.1.38"
+version = "0.1.40"
 description = ""
 requires-python = ">=3.10"
 
 [tool.poetry]
 name = "py-omni-converter"
-version = "0.1.38"
+version = "0.1.40"
 description = ""
 authors = ["proboscis <nameissoap@gmail.com>"]
 packages = [{include="omni_converter"}]
