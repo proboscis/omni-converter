@@ -1,14 +1,12 @@
-import abc
 import os
-from abc import ABC
 from dataclasses import dataclass
 from typing import Any
 
 from cytoolz import memoize
 
+from omni_converter import IAutoData
+from omni_converter.solver.astar import AstarSolver, EdgeCachedSolver
 from omni_converter.solver.rules import AutoRuleBook
-from omni_converter.solver.astar import AstarSolver, Converter, EdgeCachedSolver
-from pinject_design.di.dynamic_proxy import DynamicProxyContextImpl
 
 
 @memoize
@@ -24,42 +22,6 @@ def get_solver(rule: AutoRuleBook):
     cache_path = os.path.expanduser("~/.cache/omni_converter.shelve")
     return EdgeCachedSolver(solver, cache_path)# this is too unstable
     #return solver
-
-
-class IAutoData(ABC):
-    @property
-    @abc.abstractmethod
-    def value(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def format(self):
-        pass
-
-    @abc.abstractmethod
-    def to(self, format):
-        pass
-
-    @abc.abstractmethod
-    def convert(self, format) -> "IAutoData":
-        pass
-
-    @abc.abstractmethod
-    def converter(self, format) -> Converter:
-        pass
-
-    @abc.abstractmethod
-    def map(self, f, format=None) -> "IAutoData":
-        pass
-
-    @abc.abstractmethod
-    def override(self, rule: AutoRuleBook) -> "IAutoData":
-        pass
-
-    @abc.abstractmethod
-    def cast(self,new_format)->"IAutoData":
-        pass
 
 
 @dataclass
@@ -129,6 +91,9 @@ class RuledData(IAutoData):
         )
 
     def __repr__(self):
+        return f"RuledData({self.data})"
+
+    def __str__(self):
         return f"RuledData({self.data})"
 
 

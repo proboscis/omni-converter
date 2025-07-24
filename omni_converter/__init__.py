@@ -1,9 +1,8 @@
 __version__ = '0.1.0'
 
 from dataclasses import dataclass
-from typing import Any
 
-from omni_converter.auto_data.auto_v2 import AutoData2, RuledData, IAutoData
+from omni_converter.auto_data.i_auto_data import IAutoData
 from omni_converter.solver.rules import AutoRuleBook
 
 _GLOBAL_RULE: AutoRuleBook = None
@@ -21,4 +20,5 @@ class AutoDataFactory:
     rulebook: AutoRuleBook
 
     def __call__(self, format, value) -> IAutoData:
+        from omni_converter.auto_data.auto_v2 import AutoData2
         return AutoData2(value=value, format=format).with_rules(self.rulebook)
