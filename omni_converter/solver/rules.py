@@ -1,13 +1,12 @@
 # rule is a class that describes a transition between states
 import abc
-from dataclasses import dataclass, field, replace
-from typing import Callable, List, Union, NamedTuple, Tuple, Any
-
+import hashlib
+from dataclasses import dataclass, field
 from lru import LRU
 from pampy import match
 from tabulate import tabulate
+from typing import Callable, List, Union, Any, Sequence
 
-import hashlib
 
 @dataclass()
 class RuleEdge:
@@ -22,7 +21,7 @@ class RuleEdge:
             self.name = self.converter.__name__
 
 
-class IRule(metaclass=abc.ABCMeta):
+class IRule(abc.ABC):
     @abc.abstractmethod
     def __call__(self, state) -> List[RuleEdge]:
         pass
@@ -98,7 +97,7 @@ class CastLambda(IRule):
         return hash((self.rule, self.name, self.cost))
 
 
-class IRecursiveRule(metaclass=abc.ABCMeta):
+class IRecursiveRule(abc.ABC):
     @abc.abstractmethod
     def __call__(self, format: Any, neighbor_getter: Callable[[Any], List[RuleEdge]]) -> List[RuleEdge]:
         pass
@@ -108,28 +107,30 @@ class IRecursiveRule(metaclass=abc.ABCMeta):
         pass
 
 
+@dataclass
 class AutoRuleBook:
+    id: str = field(default="unknown")
+    rules: Sequence[IRule] = field(default_factory=tuple)
+    recursive_rules: Sequence[IRecursiveRule] = field(default_factory=tuple)
+    max_memo: int = field(default=2 ** 20)
+
+    def __post_init__(self):
+        self.rules = tuple(self.rules)
+        self.recursive_rules = tuple(self.recursive_rules)
+        self._init_non_picklable()
+
     def _init_non_picklable(self):
         self.memo = LRU(self.max_memo)
 
-    def __init__(self,
-                 id: str = "unknown",
-                 rules: List[IRule] = None,
-                 recursive_rules: List[IRecursiveRule] = None,
-                 max_memo: int = 2 ** 20,
-                 ):
-        assert isinstance(id,str),f"id must be an instance of str. got:{id}"
-        self.id = id
-        self.max_memo = max_memo
-        self._init_non_picklable()
-        self.rules = tuple(rules or [])
-        self.recursive_rules = tuple(recursive_rules or [])
-
     def __getstate__(self):
-        return self.id,self.rules, self.recursive_rules, self.max_memo
+        import cloudpickle
+        state = self.id, self.rules, self.recursive_rules, self.max_memo
+        return cloudpickle.dumps(state)
 
     def __setstate__(self, state):
-        self.id,self.rules, self.recursive_rules, self.max_memo = state
+        import cloudpickle
+        state = cloudpickle.loads(state)
+        self.id, self.rules, self.recursive_rules, self.max_memo = state
         self._init_non_picklable()
 
     def __add__(self, other: Union["AutoRuleBook", IRecursiveRule, IRule]):
@@ -137,8 +138,10 @@ class AutoRuleBook:
                      IRule, self.add_rule,
                      IRecursiveRule, self.add_recursive_rule,
                      AutoRuleBook,
-                     lambda r: AutoRuleBook(hashlib.md5((self.id + r.id).encode()).hexdigest(), self.rules + r.rules,
-                                            self.recursive_rules + r.recursive_rules),
+                     lambda r: AutoRuleBook(
+                         id=hashlib.md5((self.id + r.id).encode()).hexdigest(),
+                         rules=tuple(self.rules) + tuple(r.rules),
+                         recursive_rules=self.recursive_rules + r.recursive_rules),
                      )
 
     def add_rule(self, rule: Union[IRule, Callable]) -> "AutoRuleBook":
@@ -150,7 +153,7 @@ class AutoRuleBook:
         :return:
         """
         if not isinstance(rule, IRule):
-            rule = ConversionLambda(rule)
+            rule = ConversionLambda(rule=rule)
         return self + AutoRuleBook(rules=(rule,))
 
     def add_rules(self, *rules: Union[IRule, Callable]) -> "AutoRuleBook":
@@ -161,7 +164,7 @@ class AutoRuleBook:
 
     def add_recursive_rule(self, r_rule: Union[IRecursiveRule, Callable]) -> "AutoRuleBook":
         if not isinstance(r_rule, (IRecursiveRule, IRule)):
-            r_rule = ConversionLambda(r_rule)
+            r_rule = ConversionLambda(rule=r_rule)
         return self + AutoRuleBook(recursive_rules=[r_rule])
 
     def add_cast(self, rule: Callable, name=None) -> "AutoRuleBook":
@@ -170,7 +173,7 @@ class AutoRuleBook:
         :param name:
         :return:
         """
-        return self.add_rule(CastLambda(rule, name, cost=1))
+        return self.add_rule(CastLambda(rule=rule, name=name, cost=1))
 
     def add_alias(self, a, b) -> "AutoRuleBook":
         return self.add_cast(
@@ -202,7 +205,7 @@ class AutoRuleBook:
 
     def __hash__(self):
         # ohh id must return an integer, okey
-        return int(hashlib.md5(self.id.encode()).hexdigest(),16)
+        return int(hashlib.md5(self.id.encode()).hexdigest(), 16)
 
     def __repr__(self):
         t1 = tabulate(enumerate(self.rules), headers="index rules".split())
